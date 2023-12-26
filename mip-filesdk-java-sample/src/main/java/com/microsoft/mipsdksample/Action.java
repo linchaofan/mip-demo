@@ -45,6 +45,7 @@ import com.microsoft.informationprotection.internal.gen.PolicyProfile;
 import com.microsoft.informationprotection.internal.utils.Pair;
 import com.microsoft.informationprotection.policy.*;
 import com.nimbusds.oauth2.sdk.util.StringUtils;
+import com.microsoft.informationprotection.policy.action.ActionType;
 
 public class Action {
 
@@ -62,7 +63,7 @@ public class Action {
         this.userName = userName;
         authDelegate = new AuthDelegateImpl(appInfo);
         
-        // Initialize MIP For File SDK components.
+        // Initialize MIP For File SDK components.        
         MIP.initialize(usePolicyEngine? MipComponent.POLICY: MipComponent.FILE, null);
 
         // Create MIP Configuration
@@ -71,7 +72,7 @@ public class Action {
         
         // Create MipContext from MipConfiguration
         mipContext = MIP.createMipContext(mipConfiguration);
-
+        
         if (usePolicyEngine) {
             policyProfile = createPolicyProfile();
             policyEngine = createPolicyEngine();
@@ -149,18 +150,18 @@ public class Action {
 
     public void ListLabels()
     {
-        // Use the FileEngine to get all labels for the user and display on screen.
+        // Use the FileEngine to get all labels for the user and display on screen. 
         if (null != fileEngine) {
-            Collection<Label> labels = fileEngine.getSensitivityLabels();
-            labels.forEach(label -> {
-                System.out.println(label.getName() + " : " + label.getId());
-                if (label.getChildren().size() > 0) {
-                    label.getChildren().forEach(child -> {
-                        System.out.println("\t" + child.getName() + " : " + child.getId());
-                    });
-                }
-            });
-        } else {
+	        Collection<Label> labels = fileEngine.getSensitivityLabels();
+	        labels.forEach(label -> { 
+	            System.out.println(label.getName() + " : " + label.getId());
+	            if (label.getChildren().size() > 0) {
+	                label.getChildren().forEach(child -> {                
+	                    System.out.println("\t" + child.getName() + " : " + child.getId());
+	                });
+	            }
+	        });
+		} else {
             labels = policyEngine.getSensitivityLabels();
             labels.forEach(label -> {
                 System.out.println(label.getName() + " : " + label.getId());
@@ -256,9 +257,7 @@ public class Action {
         ExecutionStateOptions options = new ExecutionStateOptions();
         options.setLabel(curLabel);
         options.setAssignmentMethod(AssignmentMethod.AUTO);
-        options.setContentFormat(ContentFormat.Email);
-        options.setContentIdentifier("MyTestFile.pptx");
-        options.setDowngradeJustified(new Pair<Boolean, String>(false, ""));
+        stateOptions.setSupportedActions(ActionType.AddWatermark);
 
         String m_labelId = labelId;
         String m_labelName = curLabel.getName();
