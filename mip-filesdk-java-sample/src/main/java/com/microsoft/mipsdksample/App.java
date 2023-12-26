@@ -37,6 +37,10 @@ import com.microsoft.informationprotection.DataState;
 
 public class App {
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
+        if (true) {
+            testUsePolicyEngine();
+            return ;
+        }
         InputStreamReader input = new InputStreamReader(System.in);
         BufferedReader reader = new BufferedReader(input);
 
@@ -51,7 +55,7 @@ public class App {
         System.out.print("Enter a username: ");
         String userName = reader.readLine();
 
-        Action action = new Action(appInfo, userName);
+        Action action = new Action(appInfo, userName, false);
 
         // Fetch the list of labels for the authenticated user and display.
         action.ListLabels();
@@ -95,8 +99,8 @@ public class App {
             System.out.println("File Name: " + options.InputFilePath);
             System.out.println("File Label: " + action.GetLabel(options).label.getName());
 
-            System.out.println("Reading owner from file...");
-            System.out.println("File Label: " + action.GetProtection(options).getOwner());
+            //System.out.println("Reading owner from file...");
+            //System.out.println("File Label: " + action.GetProtection(options).getOwner());
         }
 
         else 
@@ -107,4 +111,25 @@ public class App {
         System.out.println("Press enter to quit.");
         reader.readLine();
     }
+
+     static void testUsePolicyEngine() throws ExecutionException, InterruptedException {
+         // ApplicationInfo is used to store the application name, clientId, and version.
+         ApplicationInfo appInfo = new ApplicationInfo();
+
+         appInfo.setApplicationId("c307a089-d77b-4a10-9b76-be7121c6e400");
+         appInfo.setApplicationName("Foxit PDF Editor for cloud");
+         appInfo.setApplicationVersion("1.14.108");
+
+         String userName = "tom@foxitsoftwareinc.onmicrosoft.com";
+
+         Action action = new Action(appInfo, userName, true);
+
+         // Fetch the list of labels for the authenticated user and display.
+         action.ListLabels();
+
+         // Copy a label Id from the output and paste into the prompt.
+         String labelId = "3f86614f-9d2f-4468-9bb4-47d0d0abd03a";
+
+         boolean result = action.SetLabel(labelId, false);
+     }
 }

@@ -41,7 +41,10 @@ import com.microsoft.informationprotection.file.FileEngineSettings;
 import com.microsoft.informationprotection.file.FileProfileSettings;
 import com.microsoft.informationprotection.file.IFileEngine;
 import com.microsoft.informationprotection.file.IFileHandler;
+import com.microsoft.informationprotection.internal.gen.PolicyProfile;
+import com.microsoft.informationprotection.internal.utils.Pair;
 import com.microsoft.informationprotection.policy.*;
+import com.nimbusds.oauth2.sdk.util.StringUtils;
 
 public class Action {
 
@@ -50,16 +53,17 @@ public class Action {
     IFileEngine fileEngine;
     IPolicyProfile policyProfile;
     IPolicyEngine policyEngine;
+    List<Label> labels = null;
     MipContext mipContext;
     String userName;
 
-    public Action(ApplicationInfo appInfo, String userName) throws InterruptedException, ExecutionException
+    public Action(ApplicationInfo appInfo, String userName, boolean usePolicyEngine) throws InterruptedException, ExecutionException
     {
         this.userName = userName;
         authDelegate = new AuthDelegateImpl(appInfo);
         
-        // Initialize MIP For File SDK components.        
-        MIP.initialize(MipComponent.FILE, null);
+        // Initialize MIP For File SDK components.
+        MIP.initialize(usePolicyEngine? MipComponent.POLICY: MipComponent.FILE, null);
 
         // Create MIP Configuration
         // MIP Configuration can be used to set various delegates, feature flags, and other SDK behavior. 
@@ -67,13 +71,15 @@ public class Action {
         
         // Create MipContext from MipConfiguration
         mipContext = MIP.createMipContext(mipConfiguration);
-        
-        // Create the FileProfile and Engine.
-        fileProfile = CreateFileProfile();
-        fileEngine = CreateFileEngine(fileProfile);
 
-        policyProfile = createPolicyProfile();
-        policyEngine = createPolicyEngine();
+        if (usePolicyEngine) {
+            policyProfile = createPolicyProfile();
+            policyEngine = createPolicyEngine();
+        } else {
+            // Create the FileProfile and Engine.
+            fileProfile = CreateFileProfile();
+            fileEngine = CreateFileEngine(fileProfile);
+        }
     }
 
     private IFileProfile CreateFileProfile() throws InterruptedException, ExecutionException
@@ -86,13 +92,6 @@ public class Action {
         Future<IFileProfile> fileProfileFuture = MIP.loadFileProfileAsync(fileProfileSettings);
         IFileProfile fileProfile = fileProfileFuture.get();
         return fileProfile;    
-    }
-
-    private IPolicyProfile createPolicyProfile() throws ExecutionException, InterruptedException {
-        PolicyProfileSettings settings = new PolicyProfileSettings(mipContext, CacheStorageType.ON_DISK);
-        Future<IPolicyProfile> policyProfileFuture = MIP.loadPolicyProfileAsync(settings);
-        IPolicyProfile policyProfile = policyProfileFuture.get();
-        return policyProfile;
     }
 
     private IFileEngine CreateFileEngine(IFileProfile profile) throws InterruptedException, ExecutionException
@@ -115,6 +114,12 @@ public class Action {
         return fileEngine;
     }
 
+    private IPolicyProfile createPolicyProfile() throws ExecutionException, InterruptedException {
+        PolicyProfileSettings settings = new PolicyProfileSettings(mipContext, CacheStorageType.ON_DISK_ENCRYPTED);
+        Future<IPolicyProfile> policyProfileFuture = MIP.loadPolicyProfileAsync(settings);
+        IPolicyProfile policyProfile = policyProfileFuture.get();
+        return policyProfile;
+    }
     /**
      * 初始化策略引擎
      *
@@ -122,6 +127,7 @@ public class Action {
      */
     private IPolicyEngine createPolicyEngine() throws ExecutionException, InterruptedException {
         PolicyEngineSettings settings = new PolicyEngineSettings(userName, authDelegate, "", "en-US");
+        settings.setCloudEndpointBaseUrl("");
         settings.setIdentity(new Identity(userName));
 
         Future<IPolicyEngine> policyEngineFuture = policyProfile.addEngineAsync(settings);
@@ -143,17 +149,33 @@ public class Action {
 
     public void ListLabels()
     {
-        // Use the FileEngine to get all labels for the user and display on screen. 
-        Collection<Label> labels = fileEngine.getSensitivityLabels();
-        labels.forEach(label -> { 
-            System.out.println(label.getName() + " : " + label.getId());
-            if(label.getChildren().size() > 0)
-            {
-                label.getChildren().forEach(child -> {                
-                    System.out.println("\t" + child.getName() + " : " + child.getId());
-                });
+        // Use the FileEngine to get all labels for the user and display on screen.
+        if (null != fileEngine) {
+            Collection<Label> labels = fileEngine.getSensitivityLabels();
+            labels.forEach(label -> {
+                System.out.println(label.getName() + " : " + label.getId());
+                if (label.getChildren().size() > 0) {
+                    label.getChildren().forEach(child -> {
+                        System.out.println("\t" + child.getName() + " : " + child.getId());
+                    });
+                }
+            });
+        } else {
+            labels = policyEngine.getSensitivityLabels();
+            labels.forEach(label -> {
+                System.out.println(label.getName() + " : " + label.getId());
+                if(label.getChildren().size() > 0)
+                {
+                    label.getChildren().forEach(child -> {
+                        System.out.println("\t" + child.getName() + " : " + child.getId());
+                    });
+                }
+            });
+            Label defaultSensitivityLabel = policyEngine.getDefaultSensitivityLabel("");
+            if (null != defaultSensitivityLabel) {
+                System.out.println("\t" + defaultSensitivityLabel.getName() + " : " + defaultSensitivityLabel.getId());
             }
-        });
+        }
     }
 
     public boolean SetLabel(FileOptions options) throws InterruptedException, ExecutionException
@@ -185,21 +207,6 @@ public class Action {
             // Given that it's gated on the isModified() property, this should always be true.
             result = fileHandler.commitAsync(options.OutputFilePath).get();
         }
-
-
-        Label policyLable = policyEngine.getLabelById(options.LabelId);
-
-        ExecutionStateOptions stateOptions = new ExecutionStateOptions();
-        stateOptions.setLabel(policyLable);
-        stateOptions.setAssignmentMethod(AssignmentMethod.AUTO);
-
-        ExecutionStateImpl state = new ExecutionStateImpl(stateOptions);
-
-        IPolicyHandler policyHandler = createPolicyHandler(policyEngine, options.IsAuditDiscoveryEnabled);
-
-        Collection<com.microsoft.informationprotection.policy.action.Action> actions = policyHandler.computeActions(state);
-        actions.forEach(action -> System.out.println(action.getActionType()));
-
         return result;
     }
 
@@ -217,4 +224,82 @@ public class Action {
         return fileHandler.getProtection().getProtectionDescriptor();
     }
 
+
+    static Label GetLabelFromCache(List<Label> labels, String labelID)
+    {
+        Label finedLabel = null;
+        if (StringUtils.isBlank(labelID))
+            return null;
+        if (labels.size() == 0)
+            return null;
+
+        int nLabelIndex = 0;
+        for (Label label : labels) {
+            if (label.getId().equals(labelID)) {
+                return label;
+            }
+
+            List<Label> children = label.getChildren();
+            if (children.size() > 0) {
+                finedLabel = GetLabelFromCache(children, labelID);
+                if (finedLabel != null)
+                    return finedLabel;
+            }
+        }
+        return null;
+    }
+    public boolean SetLabel(String labelId, boolean IsAuditDiscoveryEnabled) throws InterruptedException, ExecutionException
+    {
+        Label curLabel = GetLabelFromCache(labels, labelId);//policyEngine.getLabelById(labelId);
+        if (curLabel == null || !curLabel.isActive()) return false;
+
+        ExecutionStateOptions options = new ExecutionStateOptions();
+        options.setLabel(curLabel);
+        options.setAssignmentMethod(AssignmentMethod.AUTO);
+        options.setContentFormat(ContentFormat.Email);
+        options.setContentIdentifier("MyTestFile.pptx");
+        options.setDowngradeJustified(new Pair<Boolean, String>(false, ""));
+
+        String m_labelId = labelId;
+        String m_labelName = curLabel.getName();
+        String m_labelTooltip = curLabel.getTooltip();
+        /*
+        std::string m_templateId;
+        WatermarkInfo m_WatermarkInfo;
+        HeaderInfo m_HeaderInfo;
+        FooterInfo m_FooterInfo;
+        int m_nSetingType = 0;
+        int m_nContentBits = 0;     // CONTENT_HEADER = 0X1, CONTENT_FOOTER = 0X2, WATERMARK = 0X4, ENCRYPT = 0x8
+        std::map<std::string, std::string> m_mapMatedata;
+        LabelProtectionType m_nType = LabelProtectionType::None; //用于标识标签的保护类型
+        */
+
+        Collection<com.microsoft.informationprotection.policy.action.Action> sss = ComputeAction(options, IsAuditDiscoveryEnabled);
+
+        return true;
+    }
+    Collection<com.microsoft.informationprotection.policy.action.Action> ComputeAction(ExecutionStateOptions options, boolean IsAuditDiscoveryEnabled)
+    {
+        try {
+            if (null == policyEngine) {
+                policyProfile = createPolicyProfile();
+                policyEngine = createPolicyEngine();
+            }
+            if (policyEngine == null)
+                return null;
+
+            IPolicyHandler policyHandler = createPolicyHandler(policyEngine, IsAuditDiscoveryEnabled);
+            ExecutionStateImpl state = new ExecutionStateImpl(options);
+
+            Collection<com.microsoft.informationprotection.policy.action.Action> actions = policyHandler.computeActions(state);
+            if (/*options.generateAuditEvent && */actions.size() == 0) {//TODO
+                policyHandler.notifyCommittedActions(state);
+            }
+            return actions;
+        } catch (Exception e) {
+            System.out.println("ComputeAction Exception: " + e.getMessage());
+            e.printStackTrace();
+        }
+        return null;
+    }
 }

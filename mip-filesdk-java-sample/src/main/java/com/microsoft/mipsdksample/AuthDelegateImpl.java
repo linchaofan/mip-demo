@@ -54,7 +54,7 @@ public class AuthDelegateImpl implements IAuthDelegate {
 
     @Override
     public String acquireToken(Identity userName, String authority, String resource, String claims) {
-        if(resource.endsWith("/")){
+        /*if(resource.endsWith("/")){
             SCOPE = Collections.singleton(resource + ".default");        
         }
         else {
@@ -62,13 +62,19 @@ public class AuthDelegateImpl implements IAuthDelegate {
         }
 
         AUTHORITY = authority;
-        String token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IlQxU3QtZExUdnlXUmd4Ql82NzZ1OGtyWFMtSSIsImtpZCI6IlQxU3QtZExUdnlXUmd4Ql82NzZ1OGtyWFMtSSJ9.eyJhdWQiOiJodHRwczovL3N5bmNzZXJ2aWNlLm8zNjVzeW5jc2VydmljZS5jb20iLCJpc3MiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC8yOThjNDhkMC1mNTU3LTQ1NjEtYjU0ZC0xYmZmZWQxZDZiNzQvIiwiaWF0IjoxNzAzMjEyMjE5LCJuYmYiOjE3MDMyMTIyMTksImV4cCI6MTcwMzI5NTMxOSwiYWNyIjoiMSIsImFpbyI6IkFUUUF5LzhWQUFBQWxWTHRJU3ZHZFdiUUMxWm9SeXFPTWwrWlc5dTBpY1NVSkVoS2xqSW5QWUhRR2RTRjA2WUdZNlI0T0JuM05TMEEiLCJhbXIiOlsicHdkIl0sImFwcGlkIjoiYzMwN2EwODktZDc3Yi00YTEwLTliNzYtYmU3MTIxYzZlNDAwIiwiYXBwaWRhY3IiOiIwIiwiaXBhZGRyIjoiMTI5LjIyNy41Ny4yMjIiLCJuYW1lIjoiVG9tIiwib2lkIjoiYjlkMWE3ZTEtOTFjMy00MmYxLTgyMDAtZTE0MmYyNGVhNzdjIiwicHVpZCI6IjEwMDMzRkZGOTc2N0UxODYiLCJyaCI6IjAuQVQwQTBFaU1LVmYxWVVXMVRSdl83UjFyZEM1UERJZTJoVU5OdmRwdTJhVjV0eVU5QUk0LiIsInNjcCI6IlVuaWZpZWRQb2xpY3kuVXNlci5SZWFkIiwic3ViIjoiVWlGT3RIc2NocjdBMU9BUHVBSkpWVXFMRjlRcElCb3RTUHVOUXlqazlmdyIsInRpZCI6IjI5OGM0OGQwLWY1NTctNDU2MS1iNTRkLTFiZmZlZDFkNmI3NCIsInVuaXF1ZV9uYW1lIjoidG9tQGZveGl0c29mdHdhcmVpbmMub25taWNyb3NvZnQuY29tIiwidXBuIjoidG9tQGZveGl0c29mdHdhcmVpbmMub25taWNyb3NvZnQuY29tIiwidXRpIjoieGVZQ2xwZ202RUNZZWxaVmFKelVBUSIsInZlciI6IjEuMCJ9.kNHnaIE19clxLgvCFI27lFVaFl-8GQsZQCEf8xm7w80FuN1zCxFX0zwJVGOWK4qubSw844eNKD6CXeY8MjcA6aNta-jEP8ua6i7rK5-og3aFM6VvSVWD-4sSmpxeyBkZ7w5pOJjDE2SVZD38mdwVMDTCb62T7O_Oj7jQtrrsz-WubT_21XpO5RF9_rWZ1n3bUxuE2xzWp0DNPQdsa6hr9Gw6AUYHPV4WHxjCvRhDegGuAQn5zFhMQ0QDxZQ9Cpt6gQUXVNHbqe36yWKqFRRlv_fVeqZKQHeuith1CgiRKc3JS9saF-rxgPL3iHKX-xJHQvptNthPEOV1iDQGjtm2hQ";
-//        try {
-//            token = acquireTokenInteractive().accessToken();
-//        } catch (Exception e) {
-//            // TODO Auto-generated catch block
-//            e.printStackTrace();
-//        }
+        try {
+            token = acquireTokenInteractive().accessToken();
+        } catch (Exception e) {
+            // TODO Auto-generated catch block
+            e.printStackTrace();
+        }*/
+
+        String token = "";
+        if (resource.startsWith("https://aadrm.com")) {
+            token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IjVCM25SeHRRN2ppOGVORGMzRnkwNUtmOTdaRSIsImtpZCI6IjVCM25SeHRRN2ppOGVORGMzRnkwNUtmOTdaRSJ9.eyJhdWQiOiJodHRwczovL2FhZHJtLmNvbSIsImlzcyI6Imh0dHBzOi8vc3RzLndpbmRvd3MubmV0LzI5OGM0OGQwLWY1NTctNDU2MS1iNTRkLTFiZmZlZDFkNmI3NC8iLCJpYXQiOjE3MDM1NTE2NDQsIm5iZiI6MTcwMzU1MTY0NCwiZXhwIjoxNzAzNjM0NzQ0LCJhY3IiOiIxIiwiYWlvIjoiQVRRQXkvOFZBQUFBWStSRkdHUTAxbkwxT05WNlk0Rm8yVGVNdU1aSCtKNFZyQ3VqaDZpSlNKREl4RHJHOG1CcUQ4VnJoZENRUUtkUSIsImFtciI6WyJwd2QiXSwiYXBwaWQiOiJjMzA3YTA4OS1kNzdiLTRhMTAtOWI3Ni1iZTcxMjFjNmU0MDAiLCJhcHBpZGFjciI6IjAiLCJpcGFkZHIiOiIyMjAuMjUwLjQwLjMwIiwibmFtZSI6IlRvbSIsIm9pZCI6ImI5ZDFhN2UxLTkxYzMtNDJmMS04MjAwLWUxNDJmMjRlYTc3YyIsInB1aWQiOiIxMDAzM0ZGRjk3NjdFMTg2IiwicmgiOiIwLkFUMEEwRWlNS1ZmMVlVVzFUUnZfN1IxcmRCSUFBQUFBQUFBQXdBQUFBQUFBQUFBOUFJNC4iLCJzY3AiOiJ1c2VyX2ltcGVyc29uYXRpb24iLCJzdWIiOiJjTExIdENzVS1NalQ3MjRXZlhvbkpkMS1VZkV4MzZHWUxRN1czZHpSR21jIiwidGlkIjoiMjk4YzQ4ZDAtZjU1Ny00NTYxLWI1NGQtMWJmZmVkMWQ2Yjc0IiwidW5pcXVlX25hbWUiOiJ0b21AZm94aXRzb2Z0d2FyZWluYy5vbm1pY3Jvc29mdC5jb20iLCJ1cG4iOiJ0b21AZm94aXRzb2Z0d2FyZWluYy5vbm1pY3Jvc29mdC5jb20iLCJ1dGkiOiJ6TU1wbTR0UlgweWRFMnV2ZGsxa0FRIiwidmVyIjoiMS4wIn0.wLkq9F3Sms4hFpS2NLqKDdFOtERxGbNWXUpaiOvqRnFQW-jNiWf9XTK-EC4bsYmed9TrXfhY7WeHJ9YzlWYbppsy6P0je_H5ZKx1jf5CrkUgUbIK2o4LBAeXXuFliVbjmquGzDWf7TPwkONjWe6rFuOA4KISuCQExTadaiRZPquSBEv1skmCxX5YhFb0m7SXTxulTTGhQgv4osgrnlD6U0pGqi9aZ6WJj57KGGhZr9tmVzIWzdPLRKKV_Eb7s6qZrdJWv7xvy2goA-mucu10KY45YilTWy8qTda8tUgXKGPhYWRoiq1BuxaQqnsenDgA1EShXu0g-_U3Z_8pguWOmQ";
+        } else if (resource.startsWith("https://syncservice.o365syncservice.com")) {
+            token = "eyJ0eXAiOiJKV1QiLCJhbGciOiJSUzI1NiIsIng1dCI6IjVCM25SeHRRN2ppOGVORGMzRnkwNUtmOTdaRSIsImtpZCI6IjVCM25SeHRRN2ppOGVORGMzRnkwNUtmOTdaRSJ9.eyJhdWQiOiJodHRwczovL3N5bmNzZXJ2aWNlLm8zNjVzeW5jc2VydmljZS5jb20iLCJpc3MiOiJodHRwczovL3N0cy53aW5kb3dzLm5ldC8yOThjNDhkMC1mNTU3LTQ1NjEtYjU0ZC0xYmZmZWQxZDZiNzQvIiwiaWF0IjoxNzAzNTU4MTg2LCJuYmYiOjE3MDM1NTgxODYsImV4cCI6MTcwMzY0MTI4NiwiYWNyIjoiMSIsImFpbyI6IkFUUUF5LzhWQUFBQUtud1VLcEFpMHJhbnBKQ3kzMFEwYVVraWNZOGtnYWdKcnprek0yZ0cySFdYckR0ZURxLzdVYXAzRUUzZ3J3bTkiLCJhbXIiOlsicHdkIl0sImFwcGlkIjoiYzMwN2EwODktZDc3Yi00YTEwLTliNzYtYmU3MTIxYzZlNDAwIiwiYXBwaWRhY3IiOiIwIiwiaXBhZGRyIjoiMTI5LjIyNy41Ny4yMjIiLCJuYW1lIjoiVG9tIiwib2lkIjoiYjlkMWE3ZTEtOTFjMy00MmYxLTgyMDAtZTE0MmYyNGVhNzdjIiwicHVpZCI6IjEwMDMzRkZGOTc2N0UxODYiLCJyaCI6IjAuQVQwQTBFaU1LVmYxWVVXMVRSdl83UjFyZEM1UERJZTJoVU5OdmRwdTJhVjV0eVU5QUk0LiIsInNjcCI6IlVuaWZpZWRQb2xpY3kuVXNlci5SZWFkIiwic3ViIjoiVWlGT3RIc2NocjdBMU9BUHVBSkpWVXFMRjlRcElCb3RTUHVOUXlqazlmdyIsInRpZCI6IjI5OGM0OGQwLWY1NTctNDU2MS1iNTRkLTFiZmZlZDFkNmI3NCIsInVuaXF1ZV9uYW1lIjoidG9tQGZveGl0c29mdHdhcmVpbmMub25taWNyb3NvZnQuY29tIiwidXBuIjoidG9tQGZveGl0c29mdHdhcmVpbmMub25taWNyb3NvZnQuY29tIiwidXRpIjoiNlk1dnllUnpwRUNvZVc1djJKQXlBUSIsInZlciI6IjEuMCJ9.lrvgz87o_Qo8Y7uzZYizk2xIS8ZLc0cq3zzX_qq0Ob0NOMD-pOIapIZbGgXyg-ZMi4_mMzL1xxPKURpWBmxEelJCx6yDbQtDOYzCYfpBW2en8XUwzGjxJc2cB5umuluSqsbs5iYtsAdCjCoOE6FR1LQJUUXc4k7QQASD0vBzlRCRrTvjfK5CAx2Xsrpe4lZWYskj6K8sC3S1cZLcyuWVhinKMB_Pak8tZWw6_hZc6Y6b0LhVMbqqv9HmqK6bOv9H-5XWr1hNq0kTr8LGvNgx136NynvDAasGOFvWmz9TTR_X5CjQwpn8vkl45UHjPpHFeNdk22ZgMc0e67vjonI1Gg\n";
+        }
         return token;
     }
 
