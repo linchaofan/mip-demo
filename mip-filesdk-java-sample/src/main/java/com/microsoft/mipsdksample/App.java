@@ -48,10 +48,10 @@ public class App {
         appInfo.setApplicationName("Foxit PDF Editor for cloud");
         appInfo.setApplicationVersion("1.14");
 
-        System.out.print("Enter a username: ");
-        String userName = reader.readLine();
+//        System.out.print("Enter a username: ");
+//        String userName = reader.readLine();
 
-        Action action = new Action(appInfo, userName);
+        Action action = new Action(appInfo, "tom@foxitsoftwareinc.onmicrosoft.com");
 
         // Fetch the list of labels for the authenticated user and display.
         action.ListLabels();

@@ -42,6 +42,7 @@ import com.microsoft.informationprotection.file.FileProfileSettings;
 import com.microsoft.informationprotection.file.IFileEngine;
 import com.microsoft.informationprotection.file.IFileHandler;
 import com.microsoft.informationprotection.policy.*;
+import com.microsoft.informationprotection.policy.action.ActionType;
 
 public class Action {
 
@@ -192,6 +193,7 @@ public class Action {
         ExecutionStateOptions stateOptions = new ExecutionStateOptions();
         stateOptions.setLabel(policyLable);
         stateOptions.setAssignmentMethod(AssignmentMethod.AUTO);
+        stateOptions.setSupportedActions(ActionType.AddWatermark);
 
         ExecutionStateImpl state = new ExecutionStateImpl(stateOptions);
 

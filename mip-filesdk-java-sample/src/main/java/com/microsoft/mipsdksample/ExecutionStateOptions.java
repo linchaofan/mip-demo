@@ -1,8 +1,10 @@
 package com.microsoft.mipsdksample;
 
 import com.microsoft.informationprotection.AssignmentMethod;
+import com.microsoft.informationprotection.DataState;
 import com.microsoft.informationprotection.Label;
 import com.microsoft.informationprotection.ProtectionDescriptor;
+import com.microsoft.informationprotection.internal.ActionSource;
 import com.microsoft.informationprotection.internal.utils.Pair;
 import com.microsoft.informationprotection.policy.MetadataEntry;
 import com.microsoft.informationprotection.policy.action.ActionType;
@@ -13,7 +15,7 @@ public class ExecutionStateOptions {
 
     private Label label;
 
-    private AssignmentMethod assignmentMethod;
+    private AssignmentMethod assignmentMethod = AssignmentMethod.STANDARD;
 
     private ProtectionDescriptor protectionDescriptor;
 
@@ -23,9 +25,10 @@ public class ExecutionStateOptions {
 
     private ActionType supportedActions;
 
-    private Pair<Boolean, String> downgradeJustified;
+    private Pair<Boolean, String> downgradeJustified = new Pair<>(false, "");
 
     private List<MetadataEntry> contentMetadata;
+
 
     public Label getLabel() {
         return label;
