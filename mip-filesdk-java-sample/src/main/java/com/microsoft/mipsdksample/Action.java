@@ -26,8 +26,7 @@
 */
 package com.microsoft.mipsdksample;
 
-import java.util.Collection;
-import java.util.List;
+import java.util.*;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
@@ -35,36 +34,65 @@ import com.microsoft.informationprotection.*;
 import com.microsoft.informationprotection.file.IFileProfile;
 import com.microsoft.informationprotection.file.LabelingOptions;
 import com.microsoft.informationprotection.file.ProtectionSettings;
-import com.microsoft.informationprotection.internal.FunctionalityFilterType;
 import com.microsoft.informationprotection.internal.callback.FileHandlerObserver;
 import com.microsoft.informationprotection.file.FileEngineSettings;
 import com.microsoft.informationprotection.file.FileProfileSettings;
 import com.microsoft.informationprotection.file.IFileEngine;
 import com.microsoft.informationprotection.file.IFileHandler;
-import com.microsoft.informationprotection.internal.gen.PolicyProfile;
-import com.microsoft.informationprotection.internal.utils.Pair;
+import com.microsoft.informationprotection.internal.gen.Error;
+import com.microsoft.informationprotection.internal.gen.ErrorType;
+import com.microsoft.informationprotection.internal.gen.ProtectionDescriptorBuilder;
+import com.microsoft.informationprotection.internal.protection.ProtectionEngineSettings;
+import com.microsoft.informationprotection.internal.protection.ProtectionProfileSettings;
 import com.microsoft.informationprotection.policy.*;
+import com.microsoft.informationprotection.policy.action.*;
+import com.microsoft.informationprotection.protection.IProtectionEngine;
+import com.microsoft.informationprotection.protection.IProtectionProfile;
+import com.microsoft.mipsdksample.constant.ContentBitsMask;
+import com.microsoft.mipsdksample.file.FileOptions;
 import com.nimbusds.oauth2.sdk.util.StringUtils;
-import com.microsoft.informationprotection.policy.action.ActionType;
 
 public class Action {
 
-    AuthDelegateImpl authDelegate;    
+    AuthDelegateImpl authDelegate;
+
     IFileProfile fileProfile;
     IFileEngine fileEngine;
+
     IPolicyProfile policyProfile;
     IPolicyEngine policyEngine;
+
+    IProtectionProfile protectionProfile;
+    IProtectionEngine protectionEngine;
+
     List<Label> labels = null;
     MipContext mipContext;
     String userName;
+    String currentUserEmail;
 
-    public Action(ApplicationInfo appInfo, String userName, boolean usePolicyEngine) throws InterruptedException, ExecutionException
+    public static final List<ActionType> defaultSupportActions = Arrays.asList(
+            ActionType.AddContentFooter,
+            ActionType.AddContentHeader,
+            ActionType.AddWatermark,
+            ActionType.Metadata,
+            ActionType.Custom,
+            ActionType.ProtectAdhoc,
+            ActionType.ProtectByTemplate,
+            ActionType.ProtectDoNotForward,
+            ActionType.RemoveProtection,
+            ActionType.Justify
+    );
+
+
+    public Action(ApplicationInfo appInfo, String userName, MipComponent... mipComponents) throws InterruptedException, ExecutionException
     {
         this.userName = userName;
         authDelegate = new AuthDelegateImpl(appInfo);
         
-        // Initialize MIP For File SDK components.        
-        MIP.initialize(usePolicyEngine? MipComponent.POLICY: MipComponent.FILE, null);
+        // Initialize MIP For SDK components.
+        for (MipComponent mipComponent : mipComponents) {
+            MIP.initialize(mipComponent, null);
+        }
 
         // Create MIP Configuration
         // MIP Configuration can be used to set various delegates, feature flags, and other SDK behavior. 
@@ -72,18 +100,45 @@ public class Action {
         
         // Create MipContext from MipConfiguration
         mipContext = MIP.createMipContext(mipConfiguration);
-        
-        if (usePolicyEngine) {
-            policyProfile = createPolicyProfile();
-            policyEngine = createPolicyEngine();
-        } else {
-            // Create the FileProfile and Engine.
-            fileProfile = CreateFileProfile();
-            fileEngine = CreateFileEngine(fileProfile);
+
+        for (MipComponent mipComponent : mipComponents) {
+            mipWorkingThread(mipComponent);
         }
     }
 
-    private IFileProfile CreateFileProfile() throws InterruptedException, ExecutionException
+    private void mipWorkingThread(MipComponent mipComponent) {
+        try {
+            switch (mipComponent) {
+                case FILE:
+                    if (fileProfile == null) {
+                        fileProfile = createFileProfile();
+                    }
+                    fileEngine = createFileEngine();
+                    break;
+
+                case POLICY:
+                    if (policyProfile == null) {
+                        policyProfile = createPolicyProfile();
+                    }
+                    policyEngine = createPolicyEngine();
+                    break;
+
+                case PROTECTION:
+                    if (protectionProfile == null) {
+                        protectionProfile = createProtectionProfile();
+                    }
+                    protectionEngine = createProtectionEngine();
+                    break;
+
+                default:
+                    throw new IllegalArgumentException("Invalid MIP Component");
+            }
+        } catch (Exception e) {
+            e.printStackTrace();
+        }
+    }
+
+    private IFileProfile createFileProfile() throws InterruptedException, ExecutionException
     {
         // The ConsentDelegate is required for all FileProfiles, but fires only when connecting to AD RMS.
         ConsentDelegate consentDelegate = new ConsentDelegate();
@@ -91,11 +146,10 @@ public class Action {
         // Create FileProfileSettings, passing in to LoadFileProfileAsync() and getting the result. 
         FileProfileSettings fileProfileSettings = new FileProfileSettings(mipContext, CacheStorageType.ON_DISK, consentDelegate);        
         Future<IFileProfile> fileProfileFuture = MIP.loadFileProfileAsync(fileProfileSettings);
-        IFileProfile fileProfile = fileProfileFuture.get();
-        return fileProfile;    
+        return fileProfileFuture.get();
     }
 
-    private IFileEngine CreateFileEngine(IFileProfile profile) throws InterruptedException, ExecutionException
+    private IFileEngine createFileEngine() throws InterruptedException, ExecutionException
     {                    
         // Create the file engine, passing in the username as the first parameter.
         // This sets the engineId to the username, making it easier to load the cached engine. 
@@ -111,15 +165,13 @@ public class Action {
    
         // Add the engine and get the result. 
         Future<IFileEngine> fileEngineFuture = fileProfile.addEngineAsync(engineSettings);
-        IFileEngine fileEngine = fileEngineFuture.get();
-        return fileEngine;
+        return fileEngineFuture.get();
     }
 
     private IPolicyProfile createPolicyProfile() throws ExecutionException, InterruptedException {
         PolicyProfileSettings settings = new PolicyProfileSettings(mipContext, CacheStorageType.ON_DISK_ENCRYPTED);
         Future<IPolicyProfile> policyProfileFuture = MIP.loadPolicyProfileAsync(settings);
-        IPolicyProfile policyProfile = policyProfileFuture.get();
-        return policyProfile;
+        return policyProfileFuture.get();
     }
     /**
      * 初始化策略引擎
@@ -132,11 +184,23 @@ public class Action {
         settings.setIdentity(new Identity(userName));
 
         Future<IPolicyEngine> policyEngineFuture = policyProfile.addEngineAsync(settings);
-        IPolicyEngine policyEngine = policyEngineFuture.get();
-        return policyEngine;
+        return policyEngineFuture.get();
     }
 
-    private IFileHandler CreateFileHandler(FileOptions options, IFileEngine engine) throws InterruptedException, ExecutionException
+    private IProtectionProfile createProtectionProfile() throws ExecutionException, InterruptedException {
+        ProtectionProfileSettings settings = new ProtectionProfileSettings(mipContext, CacheStorageType.ON_DISK_ENCRYPTED, new ConsentDelegate());
+        Future<IProtectionProfile> protectionProfileFuture = MIP.loadProtectionProfileAsync(settings);
+        return protectionProfileFuture.get();
+    }
+
+    private IProtectionEngine createProtectionEngine() throws ExecutionException, InterruptedException {
+        ProtectionEngineSettings settings = new ProtectionEngineSettings(userName, authDelegate, "", "en-US");
+        settings.setIdentity(new Identity(userName));
+        Future<IProtectionEngine> protectionEngineFuture = protectionProfile.addEngineAsync(settings);
+        return protectionEngineFuture.get();
+    }
+
+    private IFileHandler createFileHandler(FileOptions options, IFileEngine engine) throws InterruptedException, ExecutionException
     {
         // Create a FileHandler. FileHandlers are used to perform all file-specific operations. 
         FileHandlerObserver observer = new FileHandlerObserver();
@@ -152,7 +216,7 @@ public class Action {
     {
         // Use the FileEngine to get all labels for the user and display on screen. 
         if (null != fileEngine) {
-	        Collection<Label> labels = fileEngine.getSensitivityLabels();
+            labels = (List<Label>) fileEngine.getSensitivityLabels();
 	        labels.forEach(label -> { 
 	            System.out.println(label.getName() + " : " + label.getId());
 	            if (label.getChildren().size() > 0) {
@@ -181,26 +245,42 @@ public class Action {
 
     public boolean SetLabel(FileOptions options) throws InterruptedException, ExecutionException
     {
+
+        LabelMainInfo labelInfo = new LabelMainInfo();
+        labelInfo.setLabelid(options.LabelId);
+
+        getExtension(options.LabelId, labelInfo);
+
+        com.microsoft.informationprotection.internal.gen.ProtectionDescriptor protectionDes = null;
+        if (StringUtils.isNotBlank(labelInfo.getTemplateId())) {
+            if (null == protectionEngine) {
+                mipWorkingThread(MipComponent.PROTECTION);
+            }
+            protectionDes = createProtectionDescriptor(labelInfo.getLabelId());
+        }
+
         // Create a new FileHandler for the specified file and options.        
-        IFileHandler fileHandler = CreateFileHandler(options, fileEngine);
+        IFileHandler fileHandler = createFileHandler(options, fileEngine);
 
         // LabelingOptions is used to set specific attributes about the labeling operation.
         // If the labeling operations throws a JustificationRequiredException, use the 
         // setJustificationMessage() and isDowngradeJustified() then retry. 
-        LabelingOptions labelingOptions = new LabelingOptions();                    
-        labelingOptions.setAssignmentMethod(options.AssignmentMethod);
+        LabelingOptions labelingOptions = new LabelingOptions();
 
-        //labelingOptions.isDowngradeJustified(true);
-        //labelingOptions.setJustificationMessage("My Justification Message");
+        ProtectionSettings protectionSettings = new ProtectionSettings();
+        protectionSettings.setDelegatedUserEmail(currentUserEmail);
 
-        Label label = fileEngine.getLabelById(options.LabelId);
+        Label label = getLabelFromCache(labels, options.LabelId);
+        if (label == null) {
+            return false;
+        }
 
         // Attempt to set the label on the FileHandler.
         // The ProtectionSettings object can be used to write protection as another user
         // or to change the pfile extension behavior.                         
-        fileHandler.setLabel(label, labelingOptions, new ProtectionSettings());
+        fileHandler.setLabel(label, labelingOptions, protectionSettings);
 
-        // Check to see if handler has been modified. If not, skip commit. 
+        // Check to see if handler has been modified. If not, skip commit.
         boolean result = false;
         if(fileHandler.isModified())
         {
@@ -211,22 +291,44 @@ public class Action {
         return result;
     }
 
+    public void getExtension(String labelId, LabelMainInfo outInfo) {
+        if (outInfo == null) {
+            return;
+        }
+
+        ExecutionStateOptions options = new ExecutionStateOptions();
+        Label label = getLabelFromCache(labels, labelId);
+        if (label == null || !label.isActive()) {
+            return;
+        }
+
+        outInfo.setLabelName(label.getName());
+        outInfo.setLabelToolTip(label.getTooltip());
+        options.setLabel(label);
+        options.setAssignmentMethod(AssignmentMethod.AUTO);
+
+        computeAction(options, outInfo);
+
+        setLabelInfoData(outInfo);
+
+    }
+
     public ContentLabel GetLabel(FileOptions options) throws InterruptedException, ExecutionException
     {
         // Create a FileHandler then get the label from the handler. 
-        IFileHandler fileHandler = CreateFileHandler(options, fileEngine);
+        IFileHandler fileHandler = createFileHandler(options, fileEngine);
         return fileHandler.getLabel();
     }
 
     public ProtectionDescriptor GetProtection(FileOptions options) throws InterruptedException, ExecutionException
     {
         // Create a FileHandler then get the protection descriptor from the handler. 
-        IFileHandler fileHandler = CreateFileHandler(options, fileEngine);
+        IFileHandler fileHandler = createFileHandler(options, fileEngine);
         return fileHandler.getProtection().getProtectionDescriptor();
     }
 
 
-    static Label GetLabelFromCache(List<Label> labels, String labelID)
+    static Label getLabelFromCache(List<Label> labels, String labelID)
     {
         Label finedLabel = null;
         if (StringUtils.isBlank(labelID))
@@ -242,63 +344,89 @@ public class Action {
 
             List<Label> children = label.getChildren();
             if (children.size() > 0) {
-                finedLabel = GetLabelFromCache(children, labelID);
+                finedLabel = getLabelFromCache(children, labelID);
                 if (finedLabel != null)
                     return finedLabel;
             }
         }
         return null;
     }
-    public boolean SetLabel(String labelId, boolean IsAuditDiscoveryEnabled) throws InterruptedException, ExecutionException
-    {
-        Label curLabel = GetLabelFromCache(labels, labelId);//policyEngine.getLabelById(labelId);
-        if (curLabel == null || !curLabel.isActive()) return false;
 
-        ExecutionStateOptions options = new ExecutionStateOptions();
-        options.setLabel(curLabel);
-        options.setAssignmentMethod(AssignmentMethod.AUTO);
-        stateOptions.setSupportedActions(ActionType.AddWatermark);
-
-        String m_labelId = labelId;
-        String m_labelName = curLabel.getName();
-        String m_labelTooltip = curLabel.getTooltip();
-        /*
-        std::string m_templateId;
-        WatermarkInfo m_WatermarkInfo;
-        HeaderInfo m_HeaderInfo;
-        FooterInfo m_FooterInfo;
-        int m_nSetingType = 0;
-        int m_nContentBits = 0;     // CONTENT_HEADER = 0X1, CONTENT_FOOTER = 0X2, WATERMARK = 0X4, ENCRYPT = 0x8
-        std::map<std::string, std::string> m_mapMatedata;
-        LabelProtectionType m_nType = LabelProtectionType::None; //用于标识标签的保护类型
-        */
-
-        Collection<com.microsoft.informationprotection.policy.action.Action> sss = ComputeAction(options, IsAuditDiscoveryEnabled);
-
-        return true;
-    }
-    Collection<com.microsoft.informationprotection.policy.action.Action> ComputeAction(ExecutionStateOptions options, boolean IsAuditDiscoveryEnabled)
-    {
+    public void computeAction(ExecutionStateOptions options, LabelMainInfo outInfo) {
         try {
             if (null == policyEngine) {
-                policyProfile = createPolicyProfile();
-                policyEngine = createPolicyEngine();
+                mipWorkingThread(MipComponent.POLICY);
             }
             if (policyEngine == null)
-                return null;
+                return;
 
-            IPolicyHandler policyHandler = createPolicyHandler(policyEngine, IsAuditDiscoveryEnabled);
-            ExecutionStateImpl state = new ExecutionStateImpl(options);
+            IPolicyHandler policyHandler = createPolicyHandler(policyEngine, false);
 
-            Collection<com.microsoft.informationprotection.policy.action.Action> actions = policyHandler.computeActions(state);
-            if (/*options.generateAuditEvent && */actions.size() == 0) {//TODO
-                policyHandler.notifyCommittedActions(state);
-            }
-            return actions;
+            List<com.microsoft.informationprotection.policy.action.Action> actions = new ArrayList<>();
+            defaultSupportActions.forEach(actionType -> {
+                options.setSupportedActions(actionType);
+                ExecutionStateImpl state = new ExecutionStateImpl(options);
+                actions.addAll(policyHandler.computeActions(state));
+            });
+
+            actions.forEach(action -> {
+                switch (action.getActionType()) {
+                    case Metadata:
+                        MetadataAction metadataAction = (MetadataAction) action;
+                        Map<String, String> map = new HashMap<>();
+                        metadataAction.getMetadataToAdd().forEach(entry -> map.put(entry.getKey(), entry.getValue()));
+                        outInfo.setMapMatedata(map);
+                        break;
+                    case AddWatermark:
+                        AddWatermarkAction watermarkAction = (AddWatermarkAction) action;
+                        WatermarkInfo info = new WatermarkInfo(watermarkAction);
+                        outInfo.setWatermarkInfo(info);
+                        outInfo.nSetingType |= ContentBitsMask.WATERMARK;
+                        break;
+                    case AddContentHeader:
+                        AddContentHeaderAction headerAction = (AddContentHeaderAction) action;
+                        HeaderInfo headerInfo = new HeaderInfo(headerAction);
+                        outInfo.setHeaderInfo(headerInfo);
+                        outInfo.nSetingType |= ContentBitsMask.CONTENT_HEADER;
+                        break;
+                    case AddContentFooter:
+                        AddContentFooterAction footerAction = (AddContentFooterAction) action;
+                        FooterInfo footerInfo = new FooterInfo(footerAction);
+                        outInfo.setFooterInfo(footerInfo);
+                        outInfo.nSetingType |= ContentBitsMask.CONTENT_FOOTER;
+                        break;
+                    case ProtectByTemplate:
+                        ProtectByTemplateAction templateAction = (ProtectByTemplateAction) action;
+                        outInfo.setTemplateId(templateAction.templateId);
+                        break;
+                    default:
+                        break;
+                }
+            });
+        } catch (Error mipErr) {
+            String errMsg = mipErr.getMessage();
+            ErrorType type = mipErr.GetErrorType();
+            System.out.println("computeAction Error: " + errMsg + " type: " + type);
+            mipErr.printStackTrace();
         } catch (Exception e) {
-            System.out.println("ComputeAction Exception: " + e.getMessage());
+            System.out.println("computeAction Exception: " + e.getMessage());
             e.printStackTrace();
+        }
+    }
+
+    public void setLabelInfoData(LabelMainInfo outInfo) {
+        outInfo.getMapMatedata().forEach((key, value) -> {
+            if (key.contains("ContentBits")) {
+                outInfo.setnContentBits(Integer.parseInt(value));
+            }
+        });
+    }
+
+    public com.microsoft.informationprotection.internal.gen.ProtectionDescriptor createProtectionDescriptor(String templateId) {
+        if (StringUtils.isNotBlank(templateId)) {
+            return ProtectionDescriptorBuilder.CreateFromTemplate(templateId).Build();
         }
         return null;
     }
+
 }

@@ -34,13 +34,13 @@ import java.util.concurrent.ExecutionException;
 import com.microsoft.informationprotection.ApplicationInfo;
 import com.microsoft.informationprotection.AssignmentMethod;
 import com.microsoft.informationprotection.DataState;
+import com.microsoft.informationprotection.MipComponent;
+import com.microsoft.mipsdksample.Action;
+import com.microsoft.mipsdksample.file.FileOptions;
 
 public class App {
     public static void main(String[] args) throws InterruptedException, ExecutionException, IOException {
-        if (true) {
-            testUsePolicyEngine();
-            return ;
-        }
+
         InputStreamReader input = new InputStreamReader(System.in);
         BufferedReader reader = new BufferedReader(input);
 
@@ -52,26 +52,28 @@ public class App {
         appInfo.setApplicationName("Foxit PDF Editor for cloud");
         appInfo.setApplicationVersion("1.14");
 
-        System.out.print("Enter a username: ");
-        String userName = reader.readLine();
+        String userName = "tom@foxitsoftwareinc.onmicrosoft.com";
 
-        Action action = new Action(appInfo, userName, false);
+        Action action = new Action(appInfo, userName, MipComponent.FILE, MipComponent.POLICY, MipComponent.PROTECTION);
 
         // Fetch the list of labels for the authenticated user and display.
         action.ListLabels();
 
         // Copy a label Id from the output and paste into the prompt.
         System.out.print("Enter a label Id: ");
-        options.LabelId = reader.readLine();
+//        options.LabelId = reader.readLine();
+        options.LabelId = "b9fe72de-7225-49a0-9d5c-2b3870bb2905";
 
         // Provide an input file that should be labeled.
         System.out.print("Enter an input file full path: ");
-        options.InputFilePath = reader.readLine();
+//        options.InputFilePath = reader.readLine();
+        options.InputFilePath = "D:\\AIP\\test.pdf";
 
         // Provide the output path for the file. The original file remains intact and a
         // copy is created.
         System.out.print("Enter an output file full path: ");
-        options.OutputFilePath = reader.readLine();
+//        options.OutputFilePath = reader.readLine();
+        options.OutputFilePath = "D:\\AIP\\test_output.pdf";
 
         System.out.println("Applying label to file...");
 
@@ -122,7 +124,7 @@ public class App {
 
          String userName = "tom@foxitsoftwareinc.onmicrosoft.com";
 
-         Action action = new Action(appInfo, userName, true);
+         Action action = new Action(appInfo, userName, MipComponent.POLICY);
 
          // Fetch the list of labels for the authenticated user and display.
          action.ListLabels();
@@ -130,6 +132,6 @@ public class App {
          // Copy a label Id from the output and paste into the prompt.
          String labelId = "3f86614f-9d2f-4468-9bb4-47d0d0abd03a";
 
-         boolean result = action.SetLabel(labelId, false);
+//         boolean result = action.SetLabel(labelId, false);
      }
 }

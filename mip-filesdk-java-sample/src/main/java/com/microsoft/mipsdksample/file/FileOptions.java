@@ -24,7 +24,7 @@
 * THE SOFTWARE.
 *
 */
-package com.microsoft.mipsdksample;
+package com.microsoft.mipsdksample.file;
 
 import com.microsoft.informationprotection.DataState;
 import com.microsoft.informationprotection.AssignmentMethod;

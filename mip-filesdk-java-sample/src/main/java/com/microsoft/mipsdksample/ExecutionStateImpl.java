@@ -8,6 +8,7 @@ import com.microsoft.informationprotection.policy.ExecutionState;
 import com.microsoft.informationprotection.policy.MetadataEntry;
 import com.microsoft.informationprotection.policy.action.ActionType;
 
+import java.util.Arrays;
 import java.util.List;
 
 public class ExecutionStateImpl extends ExecutionState {
