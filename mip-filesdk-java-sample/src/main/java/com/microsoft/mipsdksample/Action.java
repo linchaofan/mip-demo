@@ -369,6 +369,11 @@ public class Action {
                 actions.addAll(policyHandler.computeActions(state));
             });
 
+            /*
+             * fixme 此处 actions 包含了多个重复的 Metadata ActionType
+             *       猜测原因：每次请求都会默认返回 metadata，重复请求导致
+             */
+
             actions.forEach(action -> {
                 switch (action.getActionType()) {
                     case Metadata:
